@@ -1,0 +1,15 @@
+# Render Blueprint for ElevenLabs WebSocket Proxy
+# Deploy this as a Web Service on Render
+
+services:
+  - type: web
+    name: elevenlabs-ws-proxy
+    runtime: node
+    plan: starter # Required for WebSocket (free plan has 5min timeout)
+    region: oregon # US West - good latency
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /health
