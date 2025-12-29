@@ -67,27 +67,29 @@ wss.on('connection', (clientWs, req) => {
     elevenLabsConnected = true;
     console.log(`[${connectionId}] Connected to ElevenLabs`);
 
-    // Send any buffered messages
+    // Send any buffered messages with correct binary flag
     while (messageBuffer.length > 0) {
-      const msg = messageBuffer.shift();
-      elevenLabsWs.send(msg);
+      const { data, isBinary } = messageBuffer.shift();
+      elevenLabsWs.send(data, { binary: isBinary });
     }
   });
 
   // Proxy messages: Client -> ElevenLabs
-  clientWs.on('message', (data) => {
+  // isBinary flag preserves message type (text vs binary)
+  clientWs.on('message', (data, isBinary) => {
     if (elevenLabsConnected && elevenLabsWs.readyState === WebSocket.OPEN) {
-      elevenLabsWs.send(data);
+      elevenLabsWs.send(data, { binary: isBinary });
     } else {
       // Buffer message until connection is ready
-      messageBuffer.push(data);
+      messageBuffer.push({ data, isBinary });
     }
   });
 
   // Proxy messages: ElevenLabs -> Client
-  elevenLabsWs.on('message', (data) => {
+  // isBinary flag preserves message type (text vs binary)
+  elevenLabsWs.on('message', (data, isBinary) => {
     if (clientConnected && clientWs.readyState === WebSocket.OPEN) {
-      clientWs.send(data);
+      clientWs.send(data, { binary: isBinary });
     }
   });
 
