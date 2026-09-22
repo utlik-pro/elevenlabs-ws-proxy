@@ -9,11 +9,46 @@ const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
 
+const VERSION = '1.1.0';
+
+// Коды, которые ws разрешает отправить в close(): 1000–1014 кроме 1004–1006, и 3000–4999.
+// Всё остальное (в т.ч. 1005/1006 «без кода») превращаем в 1011.
+function relayableCode(code) {
+  if (code >= 3000 && code <= 4999) return code;
+  if (code >= 1000 && code <= 1014 && code !== 1004 && code !== 1005 && code !== 1006) return code;
+  return 1011;
+}
+
+// Причина закрытия в кадре ограничена 123 байтами — обрезаем по символам до 120 байт UTF-8
+function relayableReason(reason) {
+  let text = reason ? reason.toString() : '';
+  while (text.length > 0 && Buffer.byteLength(text, 'utf8') > 120) {
+    text = text.slice(0, -1);
+  }
+  return text;
+}
+
+// Закрыть клиентский сокет тем же кодом/причиной, что прислал ElevenLabs
+// (например 3000 "[payment_issue] ..."), чтобы виджет мог понять причину.
+function safeClose(ws, code, reason) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  try {
+    ws.close(relayableCode(code), relayableReason(reason));
+  } catch (err) {
+    console.error('Close relay failed:', err.message);
+    try {
+      ws.close(1011, 'upstream closed');
+    } catch (_) {
+      // ignore
+    }
+  }
+}
+
 // Create HTTP server for health checks
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    res.end(JSON.stringify({ status: 'ok', version: VERSION, timestamp: new Date().toISOString() }));
     return;
   }
 
@@ -109,9 +144,7 @@ wss.on('connection', (clientWs, req) => {
     elevenLabsConnected = false;
     console.log(`[${connectionId}] ElevenLabs disconnected: ${code} ${reason || ''}`);
 
-    if (clientWs.readyState === WebSocket.OPEN) {
-      clientWs.close(code, reason);
-    }
+    safeClose(clientWs, code, reason);
   });
 
   // Handle client errors
@@ -164,6 +197,6 @@ process.on('SIGTERM', () => {
 // Start server
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
-  console.log(`WebSocket proxy running on port ${PORT}`);
+  console.log(`WebSocket proxy v${VERSION} running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
 });
