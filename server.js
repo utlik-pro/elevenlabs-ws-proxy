@@ -10,7 +10,9 @@ const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
 
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
+// New sessions require an explicit opt-in after the incident.
+const VOICE_SESSIONS_ENABLED = process.env.VOICE_SESSIONS_ENABLED === 'true';
 const { parseSignedConversationUrl } = require('./signed-url');
 
 // Коды, которые ws разрешает отправить в close(): 1000–1014 кроме 1004–1006, и 3000–4999.
@@ -54,8 +56,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('ElevenLabs WebSocket Proxy - Use WebSocket connection');
+  res.writeHead(404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
+  res.end('Not Found');
 });
 
 // Create WebSocket server
@@ -65,6 +67,10 @@ const wss = new WebSocket.Server({ server });
 let activeConnections = 0;
 
 wss.on('connection', (clientWs, req) => {
+  if (!VOICE_SESSIONS_ENABLED) {
+    clientWs.close(1008, 'Unavailable');
+    return;
+  }
   activeConnections++;
   const connectionId = Date.now().toString(36);
 

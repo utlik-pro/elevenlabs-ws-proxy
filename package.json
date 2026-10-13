@@ -1,6 +1,6 @@
 {
   "name": "elevenlabs-ws-proxy",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "WebSocket proxy for ElevenLabs voice AI",
   "main": "server.js",
   "scripts": {
