@@ -1,3 +1,4 @@
+require('./privacy-logger').installPrivacyLogger(console);
 /**
  * ElevenLabs WebSocket Proxy for Render
  *
@@ -9,7 +10,7 @@ const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const { parseSignedConversationUrl } = require('./signed-url');
 
 // Коды, которые ws разрешает отправить в close(): 1000–1014 кроме 1004–1006, и 3000–4999.
