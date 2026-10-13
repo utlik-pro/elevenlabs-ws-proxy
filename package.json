@@ -5,13 +5,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node test-signed-url.js",
+    "prestart": "npm test"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "ws": "^8.16.0"
+    "ws": "^8.21.3"
   },
   "keywords": [
     "websocket",

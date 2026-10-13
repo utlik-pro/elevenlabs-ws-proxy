@@ -9,7 +9,8 @@ const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
+const { parseSignedConversationUrl } = require('./signed-url');
 
 // Коды, которые ws разрешает отправить в close(): 1000–1014 кроме 1004–1006, и 3000–4999.
 // Всё остальное (в т.ч. 1005/1006 «без кода») превращаем в 1011.
@@ -79,10 +80,11 @@ wss.on('connection', (clientWs, req) => {
     return;
   }
 
-  // Validate URL is from ElevenLabs
-  if (!signedUrl.includes('elevenlabs.io')) {
+  // Exact URL validation prevents relaying private APIs or attacker hosts.
+  const targetUrl = parseSignedConversationUrl(signedUrl);
+  if (!targetUrl) {
     console.log(`[${connectionId}] Invalid URL domain, closing connection`);
-    clientWs.close(1008, 'Invalid URL domain');
+    clientWs.close(1008, 'Invalid signed conversation URL');
     activeConnections--;
     return;
   }
@@ -90,7 +92,7 @@ wss.on('connection', (clientWs, req) => {
   console.log(`[${connectionId}] Connecting to ElevenLabs...`);
 
   // Connect to ElevenLabs
-  const elevenLabsWs = new WebSocket(signedUrl);
+  const elevenLabsWs = new WebSocket(targetUrl);
 
   let elevenLabsConnected = false;
   let clientConnected = true;
